@@ -1,13 +1,21 @@
 package ca.gc.tbs;
 
-import ca.gc.tbs.domain.Problem;
-import ca.gc.tbs.domain.TopTaskSurvey;
-import ca.gc.tbs.repository.ProblemRepository;
-import ca.gc.tbs.repository.TopTaskRepository;
-import ca.gc.tbs.service.ContentService;
-import com.sybit.airtable.Airtable;
-import com.sybit.airtable.Base;
-import com.sybit.airtable.Table;
+import static java.lang.System.exit;
+
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
@@ -25,18 +33,15 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.mongodb.datatables.DataTablesRepositoryFactoryBean;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.sybit.airtable.Airtable;
+import com.sybit.airtable.Base;
+import com.sybit.airtable.Table;
 
-import static java.lang.System.exit;
+import ca.gc.tbs.domain.Problem;
+import ca.gc.tbs.domain.TopTaskSurvey;
+import ca.gc.tbs.repository.ProblemRepository;
+import ca.gc.tbs.repository.TopTaskRepository;
+import ca.gc.tbs.service.ContentService;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"ca.gc.tbs.domain", "ca.gc.tbs.repository", "ca.gc.tbs.service"})
@@ -250,10 +255,7 @@ public class Main implements CommandLineRunner {
         }
     }
 
-
-
-
-    // Populates entries to the AirTable bases and Tier 2 spreadsheet (inventory).
+    // Writes duplicate comments to spreadsheet for tracking
     private void writeDuplicateToFile(String comment, String url, String date, String timeStamp) {
         try {
             GoogleSheetsAPI.appendDuplicateComment(date, timeStamp, url, comment);
@@ -302,8 +304,6 @@ public class Main implements CommandLineRunner {
                 }
                 seenComments.add(normalizedComment);
 
-
-                boolean problemIsProcessed = "true".equals(problem.getPersonalInfoProcessed());
                 boolean junkComment = problem.getProblemDetails().trim().isEmpty() || containsHTML(problem.getProblemDetails())
                         || problem.getUrl().equals("https://www.canada.ca/") || problem.getProblemDetails().length() > 301;
                 if (junkComment) {
@@ -380,7 +380,7 @@ public class Main implements CommandLineRunner {
         exit(0);
     }
 
-    public Boolean containsHTML(String comment) {
+    public boolean containsHTML(String comment) {
         if (comment == null) return false;
         // This normalizeSpace call was added because sometimes sentences are written with extra spaces between words which triggers as HTML.
         comment = StringUtils.normalizeSpace(comment);
@@ -446,22 +446,23 @@ public class Main implements CommandLineRunner {
 
 
     public Base selectBase(String base) {
-        if (base.equalsIgnoreCase("main")) {
-            return mainBase;
+        if (base == null) {
+            return null;
         }
-        if (base.equalsIgnoreCase("health")) {
-            return healthBase;
+        switch (base.toLowerCase()) {
+            case "main":
+                return mainBase;
+            case "health":
+                return healthBase;
+            case "cra":
+                return CRA_Base;
+            case "ircc":
+                return IRCC_Base;
+            case "travel":
+                return travelBase;
+            default:
+                return null;
         }
-        if (base.equalsIgnoreCase("cra")) {
-            return CRA_Base;
-        }
-        if (base.equalsIgnoreCase("ircc")) {
-            return IRCC_Base;
-        }
-        if (base.equalsIgnoreCase("travel")) {
-            return travelBase;
-        }
-        return null;
     }
 
 
