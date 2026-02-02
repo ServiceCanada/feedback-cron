@@ -13,7 +13,6 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +30,6 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -51,23 +49,18 @@ public class Main implements CommandLineRunner {
 
     private final HashMap<String, String> mainPageTitleIds = new HashMap<>();
     private final HashMap<String, String> mainUrlLinkIds = new HashMap<>();
-    private final HashMap<String, String> mainMlTagIds = new HashMap<>();
 
     private final HashMap<String, String> healthPageTitleIds = new HashMap<>();
     private final HashMap<String, String> healthUrlLinkIds = new HashMap<>();
-    private final HashMap<String, String> healthMlTagIds = new HashMap<>();
 
     private final HashMap<String, String> CRA_PageTitleIds = new HashMap<>();
     private final HashMap<String, String> CRA_UrlLinkIds = new HashMap<>();
-    private final HashMap<String, String> CRA_MlTagIds = new HashMap<>();
 
     private final HashMap<String, String> travelPageTitleIds = new HashMap<>();
     private final HashMap<String, String> travelUrlLinkIds = new HashMap<>();
-    private final HashMap<String, String> travelMlTagIds = new HashMap<>();
 
     private final HashMap<String, String> IRCC_PageTitleIds = new HashMap<>();
     private final HashMap<String, String> IRCC_UrlLinkIds = new HashMap<>();
-    private final HashMap<String, String> IRCC_MlTagIds = new HashMap<>();
     
     @Autowired
     private ContentService contentService;
@@ -83,8 +76,6 @@ public class Main implements CommandLineRunner {
     private String problemAirtableTab;
     @Value("${airtable.pageTitleLookup}")
     private String airtablePageTitleLookup;
-    @Value("${airtable.mlTags}")
-    private String airtableMLTags;
     @Value("${airtable.URL_link}")
     private String airtableURLLink;
     @Value("${airtable.base}")
@@ -150,20 +141,11 @@ public class Main implements CommandLineRunner {
         this.getPageTitleIds(travelBase);
         this.getPageTitleIds(IRCC_Base);
 
-        this.getMLTagIds(mainBase);
-        this.getMLTagIds(healthBase);
-        this.getMLTagIds(CRA_Base);
-        this.getMLTagIds(travelBase);
-        this.getMLTagIds(IRCC_Base);
-
         this.getURLLinkIds(mainBase);
         this.getURLLinkIds(healthBase);
         this.getURLLinkIds(CRA_Base);
         this.getURLLinkIds(travelBase);
         this.getURLLinkIds(IRCC_Base);
-
-        logger.info("Auto tagging");
-        this.autoTag();
 
         logger.info("Airtable & spreadsheet sync");
         this.airTableSpreadsheetSync();
@@ -336,68 +318,7 @@ public class Main implements CommandLineRunner {
         });
     }
 
-    // Retrieves ML Tags and adds them to a hashmap for their respective AirTable base.
-    private void getMLTagIds(Base base) throws Exception {
-        @SuppressWarnings("unchecked")
-        Table<AirTableMLTag> tagsTable = base.table(airtableMLTags, AirTableMLTag.class);
-        List<AirTableMLTag> tags = tagsTable.select();
-        HashMap<String, String> m = selectMapMLTagIds(base);
-        tags.forEach(entry -> {
-            if (entry.getTag() != null) {
-                try {
-                    m.put(entry.getTag().trim().toUpperCase(), entry.getId());
-                } catch (Exception e) {
-                    logger.error("Could not add ML Tag ID: {} to ML tag ID map", entry.getTag(), e);
-                }
-            }
-        });
-    }
-
-    // Assigns tags to non-processed problems.
-    public void autoTag() {
-        List<Problem> pList = this.problemRepository.findByAutoTagProcessed("false");
-        pList.addAll(this.problemRepository.findByAutoTagProcessed(null));
-        logger.info("Amount of entries to be tagged: {}", pList.size());
-        for (Problem problem : pList) {
-            String model = "";
-            try {
-                // If problem has comment, assign language & model.
-                if (!problem.getProblemDetails().trim().equals("")) {
-                    String lang = "en";
-                    if (problem.getLanguage().equalsIgnoreCase("fr")) {
-                        lang = "fr";
-                    }
-
-                    String text = URLEncoder.encode(problem.getProblemDetails(), StandardCharsets.UTF_8.name());
-                    String URL = removeQueryAndFragment(problem.getUrl()).toLowerCase();
-
-                    if (tier1Spreadsheet.containsKey(URL)) {
-                        model = tier1Spreadsheet.get(URL)[0];
-                        logger.debug("Model: {}", model);
-                    }
-                    // Then feed through the suggestion script (Feedback-Classification-RetroAction
-                    // Repository) if model exists
-                    // and assign tags if applicable.
-                    if (!model.equals("")) {
-                        Document doc = Jsoup
-                                .connect(
-                                        "https://suggestion.tbs.alpha.canada.ca/suggestCategory?lang=" + lang + "&text=" + text + "&section=" + model)
-                                .maxBodySize(0).get();
-                        String tags = doc.select("body").html();
-                        logger.debug("Text: {} - Tags: {}", text, tags);
-                        String[] splitTags = tags.split(",");
-                        problem.getTags().addAll(Arrays.asList(splitTags));
-                    }
-                }
-            } catch (Exception e) {
-                logger.error("Could not auto tag - Model: {}", model, e);
-            }
-            problem.setAutoTagProcessed("true");
-            this.problemRepository.save(problem);
-        }
-
-    }
-
+    // Populates entries to the AirTable bases and Tier 2 spreadsheet (inventory).
     private void writeDuplicateToFile(String comment, String url, String date, String timeStamp) {
         try {
             GoogleSheetsAPI.appendDuplicateComment(date, timeStamp, url, comment);
@@ -447,8 +368,8 @@ public class Main implements CommandLineRunner {
                 seenComments.add(normalizedComment);
 
 
-                boolean problemIsProcessed = problem.getPersonalInfoProcessed().equals("true") && problem.getAutoTagProcessed().equals("true");
-                boolean junkComment = problem.getProblemDetails().trim().equals("") || containsHTML(problem.getProblemDetails())
+                boolean problemIsProcessed = "true".equals(problem.getPersonalInfoProcessed());
+                boolean junkComment = problem.getProblemDetails().trim().isEmpty() || containsHTML(problem.getProblemDetails())
                         || problem.getUrl().equals("https://www.canada.ca/") || problem.getProblemDetails().length() > 301;
                 if (junkComment) {
                     logger.info("Empty comment, deleting entry");
@@ -483,16 +404,6 @@ public class Main implements CommandLineRunner {
                     }
                     airProblem.getPageTitleIds().add(selectMapPageTitleIds(selectBase(base)).get(problem.getTitle().trim().toUpperCase()));
 
-                    for (String tag : problem.getTags()) {
-                        String trimmedTag = tag.trim().toUpperCase();
-                        if (trimmedTag.isEmpty()) {
-                            logger.warn("Empty tag encountered");
-                        } else if (selectMapMLTagIds(selectBase(base)).containsKey(trimmedTag)) {
-                            airProblem.getTags().add(selectMapMLTagIds(selectBase(base)).get(trimmedTag));
-                        } else {
-                            logger.warn("Missing tag id for: {}", tag);
-                        }
-                    }
                     airProblem.setUTM(UTM_values);
                     setAirProblemAttributes(airProblem, problem);
 
@@ -530,8 +441,8 @@ public class Main implements CommandLineRunner {
         pList.addAll(this.problemRepository.findByProcessed(null));
         for (Problem problem : pList) {
             try {
-                if (problem.getPersonalInfoProcessed().equals("true") && problem.getAutoTagProcessed().equals("true")
-                        && problem.getAirTableSync().equals("true") && (problem.getProcessed() == null || problem.getProcessed().equals("false"))) {
+                if ("true".equals(problem.getPersonalInfoProcessed())
+                        && "true".equals(problem.getAirTableSync()) && (problem.getProcessed() == null || "false".equals(problem.getProcessed()))) {
                     problem.setProcessedDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                     problem.setProcessed("true");
                     this.problemRepository.save(problem);
@@ -671,20 +582,6 @@ public class Main implements CommandLineRunner {
             return this.travelUrlLinkIds;
         if (base.equals(IRCC_Base))
             return this.IRCC_UrlLinkIds;
-        return null;
-    }
-
-    public HashMap<String, String> selectMapMLTagIds(Base base) {
-        if (base.equals(mainBase))
-            return this.mainMlTagIds;
-        if (base.equals(healthBase))
-            return this.healthMlTagIds;
-        if (base.equals(CRA_Base))
-            return this.CRA_MlTagIds;
-        if (base.equals(travelBase))
-            return this.travelMlTagIds;
-        if (base.equals(IRCC_Base))
-            return this.IRCC_MlTagIds;
         return null;
     }
 
