@@ -43,6 +43,11 @@ import static java.lang.System.exit;
 @EnableMongoRepositories(repositoryFactoryBeanClass = DataTablesRepositoryFactoryBean.class)
 public class Main implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
+    
+    // Spreadsheet URLs
+    private static final String TIER1_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1eOmX_b8XCR9eLNxUbX3Gwkp2ywJ-vhapnC7ApdRbnSg/export?format=csv";
+    private static final String TIER2_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1B16qEbfp7SFCfIsZ8fcj7DneCy1WkR0GPh4t9L9NRSg/export?format=csv";
+    
     // Tier 2 entries do not populate to AirTable.
     private final Set<String> tier2Spreadsheet = new HashSet<>();
     private final HashMap<String, String[]> tier1Spreadsheet = new HashMap<>();
@@ -210,44 +215,38 @@ public class Main implements CommandLineRunner {
 
     // Retrieves ALL model & bases from spreadsheet and imports them to the TIER 1 map.
     public void importTier1() throws Exception {
-        final Reader reader = new InputStreamReader(
-                new URL("https://docs.google.com/spreadsheets/d/1eOmX_b8XCR9eLNxUbX3Gwkp2ywJ-vhapnC7ApdRbnSg/export?format=csv").openConnection()
-                        .getInputStream(),
-                StandardCharsets.UTF_8);
-        final CSVFormat csvFormat = CSVFormat.Builder.create().setHeader().setAllowMissingColumnNames(true).build();
-        final Iterable<CSVRecord> records = csvFormat.parse(reader);
-        try {
-            for (final CSVRecord record : records) {
-                try {
-                    String[] modelBase = {record.get("MODEL"), record.get("BASE").toLowerCase()};
-                    tier1Spreadsheet.put(record.get("URL").toLowerCase(), modelBase);
-                } catch (Exception e) {
-                    logger.error("Error importing Tier 1 spreadsheet record", e);
-                }
-            }
-        } finally {
-            reader.close();
-        }
+        parseCsvFromUrl(TIER1_SPREADSHEET_URL, record -> {
+            String[] modelBase = {record.get("MODEL"), record.get("BASE").toLowerCase()};
+            tier1Spreadsheet.put(record.get("URL").toLowerCase(), modelBase);
+        }, "Tier 1");
     }
 
     // Retrieves ALL URLs from spreadsheet and imports them to the TIER 2 map
     public void importTier2() throws Exception {
-        final Reader reader = new InputStreamReader(
-                new URL("https://docs.google.com/spreadsheets/d/1B16qEbfp7SFCfIsZ8fcj7DneCy1WkR0GPh4t9L9NRSg/export?format=csv").openConnection()
-                        .getInputStream(),
-                StandardCharsets.UTF_8);
-        final CSVFormat csvFormat = CSVFormat.Builder.create().setHeader().setAllowMissingColumnNames(true).build();
-        final Iterable<CSVRecord> records = csvFormat.parse(reader);
-        try {
+        parseCsvFromUrl(TIER2_SPREADSHEET_URL, record -> {
+            tier2Spreadsheet.add(record.get("URL").toLowerCase());
+        }, "Tier 2");
+    }
+
+    // Helper method to parse CSV from URL and process each record
+    private void parseCsvFromUrl(String url, java.util.function.Consumer<CSVRecord> recordProcessor, String tierName) throws Exception {
+        try (Reader reader = new InputStreamReader(
+                new URL(url).openConnection().getInputStream(),
+                StandardCharsets.UTF_8)) {
+            
+            final CSVFormat csvFormat = CSVFormat.Builder.create()
+                    .setHeader()
+                    .setAllowMissingColumnNames(true)
+                    .build();
+            final Iterable<CSVRecord> records = csvFormat.parse(reader);
+            
             for (final CSVRecord record : records) {
                 try {
-                    tier2Spreadsheet.add(record.get("URL").toLowerCase());
+                    recordProcessor.accept(record);
                 } catch (Exception e) {
-                    logger.error("Error importing Tier 2 spreadsheet record", e);
+                    logger.error("Error importing {} spreadsheet record", tierName, e);
                 }
             }
-        } finally {
-            reader.close();
         }
     }
 
