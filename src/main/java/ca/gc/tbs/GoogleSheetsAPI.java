@@ -9,6 +9,8 @@ import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.SheetsScopes;
 import com.google.api.services.sheets.v4.model.AppendValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -18,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 public class GoogleSheetsAPI {
+    private static final Logger logger = LoggerFactory.getLogger(GoogleSheetsAPI.class);
 
     static final String spreadsheetId = "1B16qEbfp7SFCfIsZ8fcj7DneCy1WkR0GPh4t9L9NRSg";
     static final String duplicateCommentsSpreadsheetId = "1cR2mih5sBwl3wUjniwdyVA0xZcqV2Wl9yhghJfMG5oM"; // Template ID to
@@ -61,7 +64,7 @@ public class GoogleSheetsAPI {
                     .setIncludeValuesInResponse(true)
                     .execute();
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error appending URL to spreadsheet: {}", url, e);
         }
     }
 
@@ -96,7 +99,7 @@ public class GoogleSheetsAPI {
                     .setIncludeValuesInResponse(true)
                     .execute();
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error appending duplicate comment to spreadsheet - Date: {}, URL: {}", date, url, e);
         }
     }
 
