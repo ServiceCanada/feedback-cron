@@ -22,6 +22,10 @@ hs_err_pid*
 **/StoredCredential
 .DS_Store
 
+# Google Service Account Keys (plaintext - encrypted versions OK)
+**/service-account.json
+**/service-account.p12
+
 pagefeedback-cj.iml
 feedback-cj.iml
 Feedback Tool.iml

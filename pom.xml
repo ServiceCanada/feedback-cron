@@ -92,10 +92,17 @@
             <artifactId>PageSuccess</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <!-- Google Sheets API Client -->
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-sheets</artifactId>
-            <version>v4-rev20210629-1.32.1</version>
+            <version>v4-rev20240826-2.0.0</version>
+        </dependency>
+        <!-- Modern Google Auth Library (replaces deprecated GoogleCredential) -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.24.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.data</groupId>
