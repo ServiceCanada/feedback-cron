@@ -46,21 +46,6 @@ public class Main implements CommandLineRunner {
     // Tier 2 entries do not populate to AirTable.
     private final Set<String> tier2Spreadsheet = new HashSet<>();
     private final HashMap<String, String[]> tier1Spreadsheet = new HashMap<>();
-
-    private final HashMap<String, String> mainPageTitleIds = new HashMap<>();
-    private final HashMap<String, String> mainUrlLinkIds = new HashMap<>();
-
-    private final HashMap<String, String> healthPageTitleIds = new HashMap<>();
-    private final HashMap<String, String> healthUrlLinkIds = new HashMap<>();
-
-    private final HashMap<String, String> CRA_PageTitleIds = new HashMap<>();
-    private final HashMap<String, String> CRA_UrlLinkIds = new HashMap<>();
-
-    private final HashMap<String, String> travelPageTitleIds = new HashMap<>();
-    private final HashMap<String, String> travelUrlLinkIds = new HashMap<>();
-
-    private final HashMap<String, String> IRCC_PageTitleIds = new HashMap<>();
-    private final HashMap<String, String> IRCC_UrlLinkIds = new HashMap<>();
     
     @Autowired
     private ContentService contentService;
@@ -74,10 +59,6 @@ public class Main implements CommandLineRunner {
     private String airtableKey;
     @Value("${airtable.tab}")
     private String problemAirtableTab;
-    @Value("${airtable.pageTitleLookup}")
-    private String airtablePageTitleLookup;
-    @Value("${airtable.URL_link}")
-    private String airtableURLLink;
     @Value("${airtable.base}")
     private String problemAirtableBase;
 
@@ -133,19 +114,6 @@ public class Main implements CommandLineRunner {
         logger.info("Importing spreadsheets");
         this.importTier1();
         this.importTier2();
-
-        logger.info("Retrieving Airtable values");
-        this.getPageTitleIds(mainBase);
-        this.getPageTitleIds(healthBase);
-        this.getPageTitleIds(CRA_Base);
-        this.getPageTitleIds(travelBase);
-        this.getPageTitleIds(IRCC_Base);
-
-        this.getURLLinkIds(mainBase);
-        this.getURLLinkIds(healthBase);
-        this.getURLLinkIds(CRA_Base);
-        this.getURLLinkIds(travelBase);
-        this.getURLLinkIds(IRCC_Base);
 
         logger.info("Airtable & spreadsheet sync");
         this.airTableSpreadsheetSync();
@@ -284,39 +252,7 @@ public class Main implements CommandLineRunner {
     }
 
 
-    // Retrieves Page feedback statistics page IDs and adds them to a hashmap for their respective AirTable base.
-    private void getPageTitleIds(Base base) throws Exception {
-        @SuppressWarnings("unchecked")
-        Table<AirTableStat> statsTable = base.table(this.airtablePageTitleLookup, AirTableStat.class);
-        List<AirTableStat> stats = statsTable.select();
-        HashMap<String, String> m = selectMapPageTitleIds(base);
-        stats.forEach(entry -> {
-            if (entry.getPageTitle() != null) {
-                try {
-                    m.put(entry.getPageTitle().trim().toUpperCase(), entry.getId());
-                } catch (Exception e) {
-                    logger.error("Could not add Page Title ID: {} to page title ID map", entry.getPageTitle(), e);
-                }
-            }
-        });
-    }
 
-    // Retrieves Page groups by URL and adds them to a hashmap for their respective AirTable base.
-    private void getURLLinkIds(Base base) throws Exception {
-        @SuppressWarnings("unchecked")
-        Table<AirTableURLLink> urlLinkTable = base.table(this.airtableURLLink, AirTableURLLink.class);
-        List<AirTableURLLink> urlLinks = urlLinkTable.select();
-        HashMap<String, String> m = selectMapUrlLinkIds(base);
-        urlLinks.forEach(entry -> {
-            if (entry.getURLlink() != null) {
-                try {
-                    m.put(entry.getURLlink().trim().toUpperCase(), entry.getId());
-                } catch (Exception e) {
-                    logger.error("Could not add URL Link ID: {} to url link ID map", entry.getURLlink(), e);
-                }
-            }
-        });
-    }
 
     // Populates entries to the AirTable bases and Tier 2 spreadsheet (inventory).
     private void writeDuplicateToFile(String comment, String url, String date, String timeStamp) {
@@ -393,16 +329,6 @@ public class Main implements CommandLineRunner {
                 } else {
                     AirTableProblemEnhanced airProblem = new AirTableProblemEnhanced();
                     String base = tier1Spreadsheet.get(problem.getUrl())[1];
-
-                    if (!selectMapUrlLinkIds(selectBase(base)).containsKey(problem.getUrl().trim().toUpperCase())) {
-                        this.createUrlLinkEntry(problem.getUrl(), selectBase(base), airtableURLLink);
-                    }
-                    airProblem.getURLLinkIds().add(selectMapUrlLinkIds(selectBase(base)).get(problem.getUrl().trim().toUpperCase()));
-
-                    if (!selectMapPageTitleIds(selectBase(base)).containsKey(problem.getTitle().trim().toUpperCase())) {
-                        this.createPageTitleEntry(problem.getTitle(), selectBase(base), airtablePageTitleLookup);
-                    }
-                    airProblem.getPageTitleIds().add(selectMapPageTitleIds(selectBase(base)).get(problem.getTitle().trim().toUpperCase()));
 
                     airProblem.setUTM(UTM_values);
                     setAirProblemAttributes(airProblem, problem);
@@ -517,25 +443,7 @@ public class Main implements CommandLineRunner {
         airProblem.setId(null);
     }
 
-    // Creates record for new titles
-    private void createPageTitleEntry(String title, Base base, String pageTitle) throws Exception {
-        @SuppressWarnings("unchecked")
-        Table<AirTableStat> statsTable = base.table(pageTitle, AirTableStat.class);
-        AirTableStat stat = new AirTableStat(title.trim());
-        stat = statsTable.create(stat);
-        HashMap<String, String> basePageTitleMap = selectMapPageTitleIds(base);
-        basePageTitleMap.put(title.trim().toUpperCase(), stat.getId());
-    }
 
-    // Creates record for new URLs
-    private void createUrlLinkEntry(String url, Base base, String pageTitle) throws Exception {
-        @SuppressWarnings("unchecked")
-        Table<AirTableURLLink> urlLinkTable = base.table(pageTitle, AirTableURLLink.class);
-        AirTableURLLink urlLink = new AirTableURLLink(url.trim());
-        urlLink = urlLinkTable.create(urlLink);
-        HashMap<String, String> baseURLMap = selectMapUrlLinkIds(base);
-        baseURLMap.put(url.trim().toUpperCase(), urlLink.getId());
-    }
 
 
     public Base selectBase(String base) {
@@ -557,32 +465,6 @@ public class Main implements CommandLineRunner {
         return null;
     }
 
-    public HashMap<String, String> selectMapPageTitleIds(Base base) {
-        if (base.equals(mainBase))
-            return this.mainPageTitleIds;
-        if (base.equals(healthBase))
-            return this.healthPageTitleIds;
-        if (base.equals(CRA_Base))
-            return this.CRA_PageTitleIds;
-        if (base.equals(travelBase))
-            return this.travelPageTitleIds;
-        if (base.equals(IRCC_Base))
-            return this.IRCC_PageTitleIds;
-        return null;
-    }
 
-    public HashMap<String, String> selectMapUrlLinkIds(Base base) {
-        if (base.equals(mainBase))
-            return this.mainUrlLinkIds;
-        if (base.equals(healthBase))
-            return this.healthUrlLinkIds;
-        if (base.equals(CRA_Base))
-            return this.CRA_UrlLinkIds;
-        if (base.equals(travelBase))
-            return this.travelUrlLinkIds;
-        if (base.equals(IRCC_Base))
-            return this.IRCC_UrlLinkIds;
-        return null;
-    }
 
 }
