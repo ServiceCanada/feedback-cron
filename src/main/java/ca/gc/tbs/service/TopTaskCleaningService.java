@@ -51,8 +51,11 @@ public class TopTaskCleaningService {
 
     private void processTask(TopTaskSurvey task) {
         // Check for junk first - delete immediately without wasting time cleaning
-        if (task == null || hasHTMLInAnyField(task)) {
-            assert task != null;
+        if (task == null) {
+            logger.warn("Skipping null task");
+            return;
+        }
+        if (hasHTMLInAnyField(task)) {
             logger.warn("Deleting junk task: {} - Had null or hyperlink", task.getId());
             topTaskRepository.delete(task);
             return;

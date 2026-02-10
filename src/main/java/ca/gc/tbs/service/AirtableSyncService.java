@@ -1,7 +1,5 @@
 package ca.gc.tbs.service;
 
-import static java.lang.System.exit;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -114,8 +112,7 @@ public class AirtableSyncService {
                 logger.error("Could not mark completed - ID: {}", problem.getId(), e);
             }
         }
-        logger.info("Finished processing");
-        exit(0);
+        logger.info("Finished processing - all records marked complete");
     }
 
     private enum SyncResult { SAVE, SKIP }
