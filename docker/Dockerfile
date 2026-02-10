@@ -1,6 +1,4 @@
-FROM maven:3.8.6-openjdk-8-slim
-RUN apt-get clean
-RUN apt-get update
+FROM eclipse-temurin:17-jre-alpine
 RUN mkdir -p /app
 COPY target/pagefeedback-cj-1.0.0-SNAPSHOT.jar /app/app.jar
 ENV JAVA_OPTS="-Xmx2g"

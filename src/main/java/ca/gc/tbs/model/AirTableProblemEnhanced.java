@@ -1,4 +1,4 @@
-package ca.gc.tbs;
+package ca.gc.tbs.model;
 
 import java.util.ArrayList;
 import java.util.List;
