@@ -180,6 +180,7 @@ public class AirtableSyncService {
         airProblem.setMainSection(problem.getSection());
         airProblem.setStatus("New");
         airProblem.setLookupTags(null);
+        airProblem.setPageTitle(problem.getTitle());
         airProblem.setInstitution(problem.getInstitution());
         airProblem.setTheme(problem.getTheme());
         airProblem.setId(null);

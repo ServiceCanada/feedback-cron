@@ -24,8 +24,8 @@ public class AirTableProblemEnhanced {
 	@SerializedName("URL_link")
 	private List<String> URLLinkIds = new ArrayList<String>();
 
-	@SerializedName("Page title")
-	private List<String> pageTitleIds = new ArrayList<String>();
+	@SerializedName("pageTitle")
+	private String pageTitle;
 	@SerializedName("Lang")
 	private String lang;
 	@SerializedName("What's wrong")
@@ -206,12 +206,12 @@ public class AirTableProblemEnhanced {
 		this.theme = theme;
 	}
 
-	public List<String> getPageTitleIds() {
-		return pageTitleIds;
+	public String getPageTitle() {
+		return pageTitle;
 	}
 
-	public void setPageTitleIds(List<String> pageTitleIds) {
-		this.pageTitleIds = pageTitleIds;
+	public void setPageTitle(String pageTitle) {
+		this.pageTitle = pageTitle;
 	}
 	public List<String> getURLLinkIds() {
 		return URLLinkIds;
