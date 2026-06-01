@@ -1,0 +1,28 @@
+# See: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# open-pull-requests-limit: 0 disables version-bump PRs but Dependabot security
+# updates (enabled in repo Settings → Security) will still open PRs for vulnerabilities.
+version: 2
+updates:
+  # GitHub Actions - security updates only
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    target-branch: "main"
+    open-pull-requests-limit: 0
+
+  # Maven - security updates only
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    target-branch: "main"
+    open-pull-requests-limit: 0
+
+  # Docker - security updates only
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "daily"
+    target-branch: "main"
+    open-pull-requests-limit: 0
