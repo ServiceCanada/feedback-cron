@@ -39,7 +39,7 @@ import ca.gc.tbs.service.TopTaskCleaningService;
     },
     excludeFilters = @ComponentScan.Filter(
         type = FilterType.REGEX,
-        pattern = "ca\\.gc\\.tbs\\.service\\.(EmailService|ErrorKeywordService|ProblemCacheService|ProblemDateService|UserService)"
+        pattern = "ca\\.gc\\.tbs\\.service\\.(DashboardService|EmailService|ErrorKeywordService|ProblemCacheService|ProblemDateService|UserService)"
     )
 )
 @EnableMongoRepositories(
