@@ -66,6 +66,10 @@ public class Main implements CommandLineRunner {
     }
 
     public static void main(String[] args) {
+        // Force JDK's built-in XML parser over standalone Xerces, which doesn't support
+        // the accessExternalDTD security property that OpenNLP sets on DocumentBuilderFactory.
+        System.setProperty("javax.xml.parsers.DocumentBuilderFactory",
+                "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl");
         new SpringApplicationBuilder(Main.class)
                 .web(WebApplicationType.NONE)
                 .run(args);
