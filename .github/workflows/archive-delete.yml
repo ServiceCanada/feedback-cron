@@ -1,0 +1,45 @@
+name: Archive Quarter Delete
+
+# Triggered automatically when the "Archive Quarter Export" workflow completes
+# successfully. Also supports manual dispatch for testing.
+#
+# This workflow deletes from MongoDB the same quarter that was exported to CSV
+# by the export workflow. It includes a safety guard: it will abort if the
+# expected CSV backup does not exist in archives/.
+
+on:
+  # Disabled during initial testing — uncomment once export has been verified
+  # workflow_run:
+  #   workflows: ["Archive Quarter Export"]
+  #   types:
+  #     - completed
+  workflow_dispatch: # Allow manual trigger for testing
+
+permissions:
+  contents: read
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    # Only run if the export workflow succeeded (or on manual dispatch)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Pull latest so the committed CSV from the export workflow is present
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pymongo
+
+      - name: Delete archive quarter from MongoDB
+        env:
+          MONGO_DB_WRITE: ${{ secrets.MONGO_DB_WRITE }}
+        run: python scripts/delete_archive_quarter.py
