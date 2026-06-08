@@ -17,7 +17,7 @@ name: Archive Quarter Export
 
 on:
   schedule:
-    - cron: '0 2 1 1,4,7,10 *'
+    - cron: '0 8 1 1,4,7,10 *'
   workflow_dispatch: # Allow manual trigger for testing
 
 permissions:
