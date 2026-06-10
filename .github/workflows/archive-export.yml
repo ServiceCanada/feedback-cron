@@ -1,0 +1,71 @@
+name: Archive Quarter Export
+
+# Runs at 02:00 UTC on the 1st of Jan, Apr, Jul, Oct (start of each calendar quarter).
+# Connects to MongoDB, exports the "two quarters back" data to a CSV, then
+# uploads it to a private Azure Blob Storage container.
+# CSVs are intentionally NOT committed to the repo because feedback comments
+# can contain personally identifiable / sensitive information.
+#
+# Required secrets:
+#   MONGO_DB_WRITE                — MongoDB connection string
+#   AZURE_CREDENTIALS             — Azure service principal JSON (already used by main.yml)
+#   AZURE_STORAGE_ACCOUNT         — Storage account name (e.g. tbsfeedbackarchives)
+#   AZURE_STORAGE_CONTAINER       — Blob container name  (e.g. feedback-archives)
+#
+# The companion workflow (archive-delete.yml) triggers on successful completion
+# of this workflow and performs the actual deletion from the database.
+
+on:
+  schedule:
+    - cron: '0 8 1 1,4,7,10 *'
+  workflow_dispatch: # Allow manual trigger for testing
+
+permissions:
+  contents: read  # Read-only — nothing is committed to the repo
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    outputs:
+      archive_label: ${{ steps.export.outputs.archive_label }}
+      archive_start: ${{ steps.export.outputs.archive_start }}
+      archive_end:   ${{ steps.export.outputs.archive_end }}
+      doc_count:     ${{ steps.export.outputs.doc_count }}
+      csv_file:      ${{ steps.export.outputs.csv_file }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pymongo
+
+      - name: Export archive quarter to CSV
+        id: export
+        env:
+          MONGO_DB_WRITE: ${{ secrets.MONGO_DB_WRITE }}
+        run: python scripts/export_archive_quarter.py
+
+      - name: Log in to Azure
+        if: steps.export.outputs.doc_count != '0'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Upload CSV to Azure Blob Storage
+        if: steps.export.outputs.doc_count != '0'
+        run: |
+          az storage blob upload \
+            --account-name "${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
+            --container-name "${{ secrets.AZURE_STORAGE_CONTAINER }}" \
+            --file "${{ steps.export.outputs.csv_file }}" \
+            --name "$(basename ${{ steps.export.outputs.csv_file }})" \
+            --auth-mode login \
+            --overwrite false
+          echo "Uploaded to Azure Blob: $(basename ${{ steps.export.outputs.csv_file }})"
