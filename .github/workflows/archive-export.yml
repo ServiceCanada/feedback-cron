@@ -1,8 +1,9 @@
 name: Archive Quarter Export
 
-# Runs at 02:00 UTC on the 1st of Jan, Apr, Jul, Oct (start of each calendar quarter).
+# Runs at 02:00 EST (07:00 UTC) on the 1st of Jan, Apr, Jul, Oct (start of each calendar quarter).
 # Connects to MongoDB, exports the "two quarters back" data to a CSV, then
-# uploads it to a private Azure Blob Storage container.
+# uploads it to a private Azure Blob Storage container. The blob is tagged with
+# doc_count metadata, which archive-delete.yml checks before deleting anything.
 # CSVs are intentionally NOT committed to the repo because feedback comments
 # can contain personally identifiable / sensitive information.
 #
@@ -17,7 +18,8 @@ name: Archive Quarter Export
 
 on:
   schedule:
-    - cron: '0 8 1 1,4,7,10 *'
+    # Cron is UTC. 07:00 UTC = 02:00 EST (UTC-5).
+    - cron: '0 7 1 1,4,7,10 *'
   workflow_dispatch: # Allow manual trigger for testing
 
 permissions:
@@ -67,5 +69,6 @@ jobs:
             --file "${{ steps.export.outputs.csv_file }}" \
             --name "$(basename ${{ steps.export.outputs.csv_file }})" \
             --auth-mode login \
+            --metadata doc_count=${{ steps.export.outputs.doc_count }} \
             --overwrite false
           echo "Uploaded to Azure Blob: $(basename ${{ steps.export.outputs.csv_file }})"

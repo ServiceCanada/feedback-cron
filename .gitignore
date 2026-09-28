@@ -426,3 +426,7 @@ src/main/resources/service-account.p12
 .classpath
 .classpath
 .project
+
+# Python bytecode
+__pycache__/
+*.py[cod]
