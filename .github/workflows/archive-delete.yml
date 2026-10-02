@@ -36,8 +36,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      # PyMongo 4.18 requires MongoDB wire version 9; the Cosmos DB server
+      # reports 8, so 4.17 is the newest release that can connect.
       - name: Install dependencies
-        run: pip install pymongo
+        run: pip install "pymongo<4.18"
 
       - name: Delete archive quarter from MongoDB
         env:
