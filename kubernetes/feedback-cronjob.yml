@@ -4,12 +4,20 @@ metadata:
   name: feedback-cj
 spec:
   schedule: "*/10 * * * *"
+  # Skip a run while the previous one is still going, and drop runs that
+  # cannot start within 5 minutes, so blocked runs cannot pile up.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
   failedJobsHistoryLimit: 1
   successfulJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      activeDeadlineSeconds: 900
+      backoffLimit: 1
       template:
         spec:
+          imagePullSecrets:
+            - name: feedback-cj-acr-pull
           containers:
             - name: feedback-cj
               image: tbsacr.azurecr.io/feedback-cj:1.0.0
