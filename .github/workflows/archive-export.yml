@@ -26,6 +26,7 @@ on:
 permissions:
   contents: read  # Read-only — nothing is committed to the repo
   id-token: write # Lets azure/login request an OIDC token instead of a stored secret
+  issues: write   # Lets a failed run open an issue so it gets noticed
 
 jobs:
   export:
@@ -78,3 +79,16 @@ jobs:
             --metadata doc_count=${{ steps.export.outputs.doc_count }} \
             --overwrite false
           echo "Uploaded to Azure Blob: $(basename ${{ steps.export.outputs.csv_file }})"
+
+      # A scheduled run that fails is otherwise only visible in the Actions
+      # tab. Open an issue so the missing archive gets noticed.
+      - name: Open an issue if the export failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" \
+            --title "Archive export failed ($(date -u +%Y-%m-%d))" \
+            --body "The quarterly archive export failed, so this quarter has not been archived and the delete did not run. Fix the cause, then re-run **Archive Quarter Export** before the quarter ends; after that it archives the next quarter instead.
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

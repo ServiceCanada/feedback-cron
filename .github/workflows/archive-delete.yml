@@ -27,6 +27,13 @@ on:
 permissions:
   contents: read
   id-token: write # Lets azure/login request an OIDC token instead of a stored secret
+  issues: write   # Lets a failed run open an issue so it gets noticed
+
+# Never run two deletes at once: a manual run started during the automatic
+# one waits for it to finish instead of deleting the same quarter in parallel.
+concurrency:
+  group: archive-delete
+  cancel-in-progress: false
 
 jobs:
   delete:
@@ -89,3 +96,16 @@ jobs:
           MONGO_DB_WRITE: ${{ secrets.MONGO_DB_WRITE }}
           BACKUP_DOC_COUNT: ${{ steps.backup.outputs.doc_count }}
         run: python scripts/delete_archive_quarter.py
+
+      # Covers both errors and the safety guard refusing to delete. Open an
+      # issue so the quarter left in the database gets looked at.
+      - name: Open an issue if the delete failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" \
+            --title "Archive delete failed for ${{ steps.quarter.outputs.archive_label || 'unknown quarter' }} ($(date -u +%Y-%m-%d))" \
+            --body "The archive delete failed or refused to run. Check the log: if the safety guard stopped it, the backup in Azure Blob is missing or holds fewer documents than the database. Some documents may already have been deleted if it failed partway; the run log shows how many.
+
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
