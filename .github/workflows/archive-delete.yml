@@ -10,8 +10,9 @@ name: Archive Quarter Delete
 # the quarter than were backed up. This also protects manual dispatches, which
 # don't depend on an export run.
 #
-# Required secrets: MONGO_DB_WRITE, AZURE_CREDENTIALS, AZURE_STORAGE_ACCOUNT,
-# AZURE_STORAGE_CONTAINER (same as archive-export.yml).
+# Required secrets: MONGO_DB_WRITE, AZURE_CLIENT_ID, AZURE_TENANT_ID,
+# AZURE_SUBSCRIPTION_ID, AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_CONTAINER
+# (same as archive-export.yml).
 
 on:
   # Auto-runs after the export workflow completes. The job below additionally
@@ -25,6 +26,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write # Lets azure/login request an OIDC token instead of a stored secret
 
 jobs:
   delete:
@@ -56,7 +58,9 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Look up CSV backup in Azure Blob Storage
         id: backup
