@@ -1,0 +1,58 @@
+# Validates that a pull request would build and deploy cleanly, without
+# touching the cluster. The deploy itself runs from main.yml on push to
+# main, after review.
+name: Validate pull request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Secrets are unavailable to pull requests from forks, so the build is
+      # limited to branches pushed to this repository.
+      - name: Decrypt large secret
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: ./scripts/decrypt.sh
+        env:
+          APPLICATION_PROPERTIES_PASSPHRASE: ${{ secrets.APPLICATION_PROPERTIES_PASSPHRASE }}
+
+      - name: Set up JDK 21
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Include local jars
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          mvn install:install-file -Dfile="lib/PageSuccess-0.0.1-SNAPSHOT.jar" -DgroupId="ca.gc.tbs" -DartifactId="PageSuccess" -Dversion="0.0.1-SNAPSHOT" -Dpackaging=jar -DgeneratePom=true
+          mvn install:install-file -Dfile="lib/airtable.java-0.2.0.jar" -DgroupId="com.sybit" -DartifactId="airtable.java" -Dversion="0.2.0" -Dpackaging=jar -DgeneratePom=true
+
+      - name: Build with Maven
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: mvn install --file pom.xml
+
+      # Build only. Nothing is pushed to the registry and no image tagged
+      # here can reach the cluster.
+      - name: Build image
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: docker build -f ./docker/Dockerfile . -t feedback-cj:${{ github.sha }}
+
+      # Validates the manifest main.yml deploys against the Kubernetes
+      # schemas offline. kubectl dry-run cannot be used here: it needs a
+      # cluster to fetch schemas from, and this workflow has no cluster access.
+      - name: Validate Kubernetes manifest
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz kubeconform
+          ./kubeconform -strict -summary kubernetes/feedback-cronjob.yml

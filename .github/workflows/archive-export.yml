@@ -9,7 +9,8 @@ name: Archive Quarter Export
 #
 # Required secrets:
 #   MONGO_DB_WRITE                — MongoDB connection string
-#   AZURE_CREDENTIALS             — Azure service principal JSON (already used by main.yml)
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
+#                                 — IDs for the OIDC login (shared with main.yml)
 #   AZURE_STORAGE_ACCOUNT         — Storage account name (e.g. tbsfeedbackarchives)
 #   AZURE_STORAGE_CONTAINER       — Blob container name  (e.g. feedback-archives)
 #
@@ -24,6 +25,7 @@ on:
 
 permissions:
   contents: read  # Read-only — nothing is committed to the repo
+  id-token: write # Lets azure/login request an OIDC token instead of a stored secret
 
 jobs:
   export:
@@ -45,8 +47,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      # PyMongo 4.18 requires MongoDB wire version 9; the Cosmos DB server
+      # reports 8, so 4.17 is the newest release that can connect.
       - name: Install dependencies
-        run: pip install pymongo
+        run: pip install "pymongo<4.18"
 
       - name: Export archive quarter to CSV
         id: export
@@ -58,7 +62,9 @@ jobs:
         if: steps.export.outputs.doc_count != '0'
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Upload CSV to Azure Blob Storage
         if: steps.export.outputs.doc_count != '0'
