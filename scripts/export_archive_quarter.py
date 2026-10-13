@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-Export MongoDB feedback entries for the archive quarter to a CSV file,
-then save it to the archives/ directory.
+Export MongoDB feedback entries for the archive quarter to a CSV file in
+/tmp/feedback-archives/. The archive-export workflow then uploads it to a
+private Azure Blob Storage container.
 
-Archive quarter = two calendar quarters before the current one:
-  - Trigger on Jan 1 (CQ1)  → archive CQ3 of previous year  (Jul 1 – Sep 30)
-  - Trigger on Apr 1 (CQ2)  → archive CQ4 of previous year  (Oct 1 – Dec 31)
-  - Trigger on Jul 1 (CQ3)  → archive CQ1 of current year   (Jan 1 – Mar 31)
-  - Trigger on Oct 1 (CQ4)  → archive CQ2 of current year   (Apr 1 – Jun 30)
+See archive_quarter.py for how the archive quarter is chosen.
 
 Required environment variable:
   MONGO_DB_WRITE  — MongoDB connection string (stored in GitHub Secrets)
@@ -16,35 +13,10 @@ Required environment variable:
 import csv
 import os
 import sys
-from datetime import date
 
 from pymongo import MongoClient
 
-
-def get_archive_quarter_range():
-    """Return (start_str, end_str, label) for the quarter to archive."""
-    today = date.today()
-    month = today.month
-    year = today.year
-
-    if month in (1, 2, 3):       # CQ1 running → archive CQ3 of prev year
-        start = date(year - 1, 7, 1)
-        end   = date(year - 1, 9, 30)
-        label = f"{year - 1}-CQ3"
-    elif month in (4, 5, 6):     # CQ2 running → archive CQ4 of prev year
-        start = date(year - 1, 10, 1)
-        end   = date(year - 1, 12, 31)
-        label = f"{year - 1}-CQ4"
-    elif month in (7, 8, 9):     # CQ3 running → archive CQ1 of current year
-        start = date(year, 1, 1)
-        end   = date(year, 3, 31)
-        label = f"{year}-CQ1"
-    else:                         # CQ4 running → archive CQ2 of current year
-        start = date(year, 4, 1)
-        end   = date(year, 6, 30)
-        label = f"{year}-CQ2"
-
-    return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"), label
+from archive_quarter import archive_blob_name, get_archive_quarter_range
 
 
 def main():
@@ -95,7 +67,7 @@ def main():
     mongo_keys = [k for _, k in FIELD_MAP]
 
     os.makedirs("/tmp/feedback-archives", exist_ok=True)
-    filename = f"/tmp/feedback-archives/feedback_archive_{label}_{start_str}_{end_str}.csv"
+    filename = os.path.join("/tmp/feedback-archives", archive_blob_name(start_str, end_str, label))
 
     with open(filename, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
