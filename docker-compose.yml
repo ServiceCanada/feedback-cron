@@ -1,0 +1,48 @@
+# Local development stack: `docker-compose up` runs the job once against a local MongoDB
+# seeded with sample data, then exits. Re-run it with `docker-compose run --rm job`.
+# Uses the local profile, so no secrets are needed and Airtable and Google Sheets are never
+# called. Needs feedback-viewer checked out next to this repo (or VIEWER_DIR set).
+services:
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27018:27017" # 27017 is left free for the feedback-viewer's local MongoDB
+    volumes:
+      - mongodb_data:/data/db
+      # Runs only when the database volume is empty; `docker-compose down -v` re-seeds.
+      - ./docker/seed:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  job:
+    image: maven:3.9.15-eclipse-temurin-21
+    working_dir: /app
+    command: sh docker/dev.sh
+    ports:
+      - "8001:8000" # remote debugger (the feedback-viewer uses 8000)
+    volumes:
+      - .:/app
+      - maven_repo:/root/.m2
+      - /app/target # keep container build output out of the host's target/
+      - ${VIEWER_DIR:-../feedback-viewer}:/viewer
+      - viewer_target:/viewer/target # keep the viewer build out of the host's checkout
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017
+      SPRING_DATA_MONGODB_DATABASE: pagesuccess
+      APP_INTEGRATIONS_ENABLED: "false"
+      LOGGING_LEVEL_ROOT: info
+      # Set to y (e.g. `DEBUG_SUSPEND=y docker-compose run --rm --service-ports job`) to
+      # make the job wait for a debugger on port 8001; it finishes too fast to attach otherwise.
+      DEBUG_SUSPEND: ${DEBUG_SUSPEND:-n}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  mongodb_data:
+  maven_repo:
+  viewer_target:
