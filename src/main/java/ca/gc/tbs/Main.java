@@ -1,8 +1,12 @@
 package ca.gc.tbs;
 
+import java.net.URI;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,8 +15,10 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.datatables.DataTablesRepositoryFactoryBean;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
@@ -49,10 +55,19 @@ import ca.gc.tbs.service.TopTaskCleaningService;
 public class Main implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
+    // Inside docker-compose, "mongodb" is this repo's database and "host.docker.internal" is
+    // the developer's machine (e.g. the feedback-viewer's local database).
+    static final Set<String> LOCAL_MONGO_HOSTS =
+            Set.of("localhost", "127.0.0.1", "mongodb", "host.docker.internal");
+
     private final TopTaskCleaningService topTaskCleaningService;
     private final ProblemCleaningService problemCleaningService;
     private final SpreadsheetService spreadsheetService;
     private final AirtableSyncService airtableSyncService;
+
+    // Off for local development: skips Airtable and Google Sheets entirely.
+    @Value("${app.integrations.enabled:true}")
+    private boolean integrationsEnabled;
 
     @Autowired
     public Main(TopTaskCleaningService topTaskCleaningService,
@@ -72,12 +87,22 @@ public class Main implements CommandLineRunner {
                 "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl");
         new SpringApplicationBuilder(Main.class)
                 .web(WebApplicationType.NONE)
+                // Runs before any bean is created: some read MongoDB as they start.
+                .listeners(event -> {
+                    if (event instanceof ApplicationEnvironmentPreparedEvent prepared) {
+                        checkLocalMode(prepared.getEnvironment());
+                    }
+                })
                 .run(args);
     }
 
     @Override
     public void run(String... args) throws Exception {
-        airtableSyncService.initialize();
+        if (integrationsEnabled) {
+            airtableSyncService.initialize();
+        } else {
+            logger.info("Local mode: Airtable and Google Sheets are off");
+        }
 
         logger.info("Cleaning TTS data (personal info + junk removal)");
         topTaskCleaningService.cleanTopTaskSurveys();
@@ -85,13 +110,40 @@ public class Main implements CommandLineRunner {
         logger.info("Cleaning Problem data (personal info removal)");
         problemCleaningService.cleanProblems();
 
-        logger.info("Importing spreadsheets");
-        spreadsheetService.importTiers();
+        if (integrationsEnabled) {
+            logger.info("Importing spreadsheets");
+            spreadsheetService.importTiers();
 
-        logger.info("Airtable & spreadsheet sync");
-        airtableSyncService.syncProblemsToAirtable();
+            logger.info("Airtable & spreadsheet sync");
+            airtableSyncService.syncProblemsToAirtable();
+        }
 
         logger.info("Mark as processed");
-        airtableSyncService.completeProcessing();
+        // Local runs never sync to Airtable, so rows can't wait on that to be marked done.
+        airtableSyncService.completeProcessing(integrationsEnabled);
+    }
+
+    static void checkLocalMode(Environment env) {
+        if (!env.getProperty("app.integrations.enabled", Boolean.class, true)) {
+            requireLocalMongo(env.getProperty("spring.data.mongodb.uri", "mongodb://localhost:27017"));
+        }
+    }
+
+    /**
+     * Local mode deletes and rewrites records, so it refuses any MongoDB that isn't on this
+     * machine or the docker-compose network. Malformed URIs are refused too.
+     */
+    static void requireLocalMongo(String uri) {
+        String host;
+        try {
+            host = URI.create(uri).getHost();
+        } catch (IllegalArgumentException e) {
+            host = null;
+        }
+        if (host == null || !LOCAL_MONGO_HOSTS.contains(host.toLowerCase())) {
+            throw new IllegalStateException(
+                    "Local mode (app.integrations.enabled=false) only runs against MongoDB on "
+                            + LOCAL_MONGO_HOSTS + ", not " + host);
+        }
     }
 }

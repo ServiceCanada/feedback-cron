@@ -14,6 +14,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import ca.gc.tbs.GoogleSheetsAPI;
@@ -25,6 +26,10 @@ import ca.gc.tbs.domain.Problem;
 @Service
 public class SpreadsheetService {
     private static final Logger logger = LoggerFactory.getLogger(SpreadsheetService.class);
+
+    // Duplicate logging runs during cleaning, which local mode still does, so it checks this itself.
+    @Value("${app.integrations.enabled:true}")
+    private boolean integrationsEnabled;
 
     private static final String TIER1_SPREADSHEET_URL = 
             "https://docs.google.com/spreadsheets/d/1eOmX_b8XCR9eLNxUbX3Gwkp2ywJ-vhapnC7ApdRbnSg/export?format=csv";
@@ -80,6 +85,9 @@ public class SpreadsheetService {
      * Logs a duplicate comment to the Google Sheets duplicate tracker.
      */
     public void logDuplicateComment(Problem problem) {
+        if (!integrationsEnabled) {
+            return;
+        }
         try {
             String date = problem.getProblemDate() != null
                     ? problem.getProblemDate()

@@ -32,13 +32,13 @@ public class AirtableSyncService {
     private final ProblemRepository problemRepository;
     private final SpreadsheetService spreadsheetService;
 
-    @Value("${airtable.key}")
+    @Value("${airtable.key:}")
     private String airtableKey;
 
-    @Value("${airtable.tab}")
+    @Value("${airtable.tab:}")
     private String problemAirtableTab;
 
-    @Value("${airtable.base}")
+    @Value("${airtable.base:}")
     private String problemAirtableBase;
 
     private Base mainBase;
@@ -55,6 +55,10 @@ public class AirtableSyncService {
      * Initializes the Airtable connection.
      */
     public void initialize() throws Exception {
+        // The settings default to empty so local mode can start without them; prod still needs them.
+        if (airtableKey.isBlank() || problemAirtableBase.isBlank() || problemAirtableTab.isBlank()) {
+            throw new IllegalStateException("airtable.key, airtable.base and airtable.tab must be set");
+        }
         logger.info("Connecting to Airtable base");
         Airtable airtable = new Airtable().configure(airtableKey);
         mainBase = airtable.base(problemAirtableBase);
@@ -93,16 +97,17 @@ public class AirtableSyncService {
     }
 
     /**
-     * Marks all processed problems as complete.
+     * Marks all processed problems as complete. With requireAirtableSync off (local mode),
+     * cleaned problems are marked complete without having been synced.
      */
-    public void completeProcessing() {
+    public void completeProcessing(boolean requireAirtableSync) {
         List<Problem> problems = problemRepository.findByProcessed("false");
         problems.addAll(problemRepository.findByProcessed(null));
 
         for (Problem problem : problems) {
             try {
                 if ("true".equals(problem.getPersonalInfoProcessed())
-                        && "true".equals(problem.getAirTableSync()) 
+                        && (!requireAirtableSync || "true".equals(problem.getAirTableSync()))
                         && (problem.getProcessed() == null || "false".equals(problem.getProcessed()))) {
                     problem.setProcessedDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                     problem.setProcessed("true");
