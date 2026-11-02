@@ -55,10 +55,8 @@ import ca.gc.tbs.service.TopTaskCleaningService;
 public class Main implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-    // Inside docker-compose, "mongodb" is this repo's database and "host.docker.internal" is
-    // the developer's machine (e.g. the feedback-viewer's local database).
-    static final Set<String> LOCAL_MONGO_HOSTS =
-            Set.of("localhost", "127.0.0.1", "mongodb", "host.docker.internal");
+    // "mongodb" is the database's host name inside docker-compose.
+    static final Set<String> LOCAL_MONGO_HOSTS = Set.of("localhost", "127.0.0.1", "mongodb");
 
     private final TopTaskCleaningService topTaskCleaningService;
     private final ProblemCleaningService problemCleaningService;

@@ -1,16 +1,24 @@
-# Local development stack: `docker-compose up` runs the job once against a local MongoDB
-# seeded with sample data, then exits. Re-run it with `docker-compose run --rm job`.
-# Uses the local profile, so no secrets are needed and Airtable and Google Sheets are never
-# called. Needs feedback-viewer checked out next to this repo (or VIEWER_DIR set).
+# Local development stack: `docker-compose up` runs the job once against the local MongoDB,
+# then exits. Re-run it with `docker-compose run --rm job`. Uses the local profile, so no
+# secrets are needed and Airtable and Google Sheets are never called. Needs feedback-viewer
+# checked out next to this repo (or VIEWER_DIR set).
+#
+# The feedback-viewer's docker-compose.yml uses the same project name, so locally the two
+# repos share one MongoDB, like prod: whichever starts first creates it, and rows the job
+# processes show up in the local viewer on refresh.
+name: pagesuccess
+
 services:
+  # Keep this service identical to the one in the feedback-viewer's docker-compose.yml, or
+  # starting either stack restarts the shared database.
   mongodb:
     image: mongo:7.0
+    # Keeps its logs out of `up`, and lets `up` here return once the job is done.
+    attach: false
     ports:
-      - "27018:27017" # 27017 is left free for the feedback-viewer's local MongoDB
+      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-      # Runs only when the database volume is empty; `docker-compose down -v` re-seeds.
-      - ./docker/seed:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 5s

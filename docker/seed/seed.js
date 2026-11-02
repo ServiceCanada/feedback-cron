@@ -1,13 +1,21 @@
-// Sample data for local runs. MongoDB runs this once, when the database volume is empty.
+// Sample data for local runs:
+// `docker-compose exec -T mongodb mongosh --quiet --file /dev/stdin < docker/seed/seed.js`.
 // Each row says what the job should do with it; check with
 // `docker-compose exec mongodb mongosh pagesuccess`.
 db = db.getSiblingDB("pagesuccess");
 
-// Word lists the cleaning step reads (BadWords in the PageSuccess jar).
-db.badwords.insertMany([
+// Word lists the cleaning step reads (BadWords in the PageSuccess jar). Upserted, so seeding
+// a database that already has them doesn't fail.
+[
   { word: "darn", language: "en", type: "profanity", active: true },
   { word: "zut", language: "fr", type: "profanity", active: true },
-]);
+].forEach((entry) =>
+  db.badwords.updateOne(
+    { word: entry.word, language: entry.language, type: entry.type },
+    { $set: entry },
+    { upsert: true },
+  ),
+);
 
 const page = {
   url: "https://www.canada.ca/en/services/benefits.html",
