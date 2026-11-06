@@ -3,11 +3,13 @@
 **Page feedback cronjob:**
 The purpose of this tool is to clean personal info of both the exit survey entries and page feedback entries, apply tags to page feedback entries, and sync the page feedback entries with the feedback-viewer and airtable.
 
-**Anytime changes are made to the domain you will need to:**
-  1. Comment out the plugins in the pom.xml file for the Feedback Viewer repository
-  2. Run MVN Install on Feedback Viewer repository
-  3. Copy the "PageSuccess" jar from the target folder
-  4. Paste the copied jar into the lib folder for the page feedback cronjob and replace.
-  5. Run MVN Install on the page feedback cronjob repository.
-  6. Uncomment the plugins from step #1.
+**Domain classes from feedback-viewer:**
+The cronjob uses feedback-viewer's domain classes (`Problem`, `TopTaskSurvey`, their repositories, `BadWords`) from the viewer's classes-only jar (`PageSuccess-0.0.1-SNAPSHOT-classes.jar`).
+
+  - **CI** checks out feedback-viewer at `VIEWER_REF` (set in `.github/workflows/main.yml` and `pr-validate.yml`) and installs it before building.
+  - **Locally**, with feedback-viewer checked out next to this repo, run this once and again whenever the viewer's domain classes change:
+    ```
+    mvn -f ../feedback-viewer/pom.xml -DskipTests install
+    ```
+    Then build this repo as usual.
 

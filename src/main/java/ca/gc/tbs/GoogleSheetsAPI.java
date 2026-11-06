@@ -13,8 +13,10 @@ import com.google.auth.oauth2.GoogleCredentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,6 +40,7 @@ public class GoogleSheetsAPI {
     private static final String APPLICATION_NAME = "Page Feedback CronJob";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String SERVICE_ACCOUNT_KEY_FILE = "service-account.json";
+    private static final String SERVICE_ACCOUNT_KEY_ENV = "GOOGLE_SERVICE_ACCOUNT_JSON";
 
     // Retry configuration
     private static final int MAX_RETRY_ATTEMPTS = 3;
@@ -78,11 +81,10 @@ public class GoogleSheetsAPI {
         NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
 
         GoogleCredentials credentials;
-        try (InputStream keyStream = GoogleSheetsAPI.class.getClassLoader()
-                .getResourceAsStream(SERVICE_ACCOUNT_KEY_FILE)) {
+        try (InputStream keyStream = openServiceAccountKey()) {
 
             if (keyStream == null) {
-                throw new IOException("Service account key file not found: " + SERVICE_ACCOUNT_KEY_FILE);
+                throw new IOException("Set " + SERVICE_ACCOUNT_KEY_ENV + " or add " + SERVICE_ACCOUNT_KEY_FILE);
             }
 
             credentials = GoogleCredentials.fromStream(keyStream)
@@ -92,6 +94,14 @@ public class GoogleSheetsAPI {
         return new Sheets.Builder(httpTransport, JSON_FACTORY, new HttpCredentialsAdapter(credentials))
                 .setApplicationName(APPLICATION_NAME)
                 .build();
+    }
+
+    private static InputStream openServiceAccountKey() {
+        String json = System.getenv(SERVICE_ACCOUNT_KEY_ENV);
+        if (json != null && !json.isBlank()) {
+            return new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+        }
+        return GoogleSheetsAPI.class.getClassLoader().getResourceAsStream(SERVICE_ACCOUNT_KEY_FILE);
     }
 
     /**
