@@ -18,6 +18,7 @@ hs_err_pid*
 # Spring Boot files
 **/application.properties
 **/application*.properties
+!src/main/resources/application-prod.properties
 **/spreadsheetCredentials.json
 **/StoredCredential
 .DS_Store
@@ -430,3 +431,5 @@ src/main/resources/service-account.p12
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+lib/PageSuccess*

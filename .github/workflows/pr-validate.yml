@@ -11,41 +11,40 @@ on:
 permissions:
   contents: read
 
+env:
+  VIEWER_REF: main
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      # Secrets are unavailable to pull requests from forks, so the build is
-      # limited to branches pushed to this repository.
-      - name: Decrypt large secret
-        if: github.event.pull_request.head.repo.full_name == github.repository
-        run: ./scripts/decrypt.sh
-        env:
-          APPLICATION_PROPERTIES_PASSPHRASE: ${{ secrets.APPLICATION_PROPERTIES_PASSPHRASE }}
-
       - name: Set up JDK 21
-        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           java-version: "21"
           distribution: "temurin"
 
-      - name: Include local jars
-        if: github.event.pull_request.head.repo.full_name == github.repository
+      - name: Check out feedback-viewer
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: ServiceCanada/feedback-viewer
+          ref: ${{ env.VIEWER_REF }}
+          path: feedback-viewer
+          persist-credentials: false
+
+      - name: Install feedback-viewer classes and local jars
         run: |
-          mvn install:install-file -Dfile="lib/PageSuccess-0.0.1-SNAPSHOT.jar" -DgroupId="ca.gc.tbs" -DartifactId="PageSuccess" -Dversion="0.0.1-SNAPSHOT" -Dpackaging=jar -DgeneratePom=true
+          mvn -B -q -DskipTests -f feedback-viewer/pom.xml install
           mvn install:install-file -Dfile="lib/airtable.java-0.2.0.jar" -DgroupId="com.sybit" -DartifactId="airtable.java" -Dversion="0.2.0" -Dpackaging=jar -DgeneratePom=true
 
       - name: Build with Maven
-        if: github.event.pull_request.head.repo.full_name == github.repository
         run: mvn install --file pom.xml
 
       # Build only. Nothing is pushed to the registry and no image tagged
       # here can reach the cluster.
       - name: Build image
-        if: github.event.pull_request.head.repo.full_name == github.repository
         run: docker build -f ./docker/Dockerfile . -t feedback-cj:${{ github.sha }}
 
       # Validates the manifest main.yml deploys against the Kubernetes

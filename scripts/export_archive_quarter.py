@@ -7,7 +7,7 @@ private Azure Blob Storage container.
 See archive_quarter.py for how the archive quarter is chosen.
 
 Required environment variable:
-  MONGO_DB_WRITE  — MongoDB connection string (stored in GitHub Secrets)
+  MONGODB_URI     — MongoDB connection string (stored in GitHub Secrets)
 """
 
 import csv
@@ -20,9 +20,9 @@ from archive_quarter import archive_blob_name, get_archive_quarter_range
 
 
 def main():
-    mongo_uri = os.environ.get("MONGO_DB_WRITE")
+    mongo_uri = os.environ.get("MONGODB_URI")
     if not mongo_uri:
-        print("ERROR: MONGO_DB_WRITE environment variable not set.", file=sys.stderr)
+        print("ERROR: MONGODB_URI environment variable not set.", file=sys.stderr)
         sys.exit(1)
 
     start_str, end_str, label = get_archive_quarter_range()

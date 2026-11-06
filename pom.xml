@@ -121,10 +121,11 @@
             <groupId>ca.gc.tbs</groupId>
             <artifactId>PageSuccess</artifactId>
             <version>0.0.1-SNAPSHOT</version>
+            <classifier>classes</classifier>
             <exclusions>
                 <exclusion>
-                    <groupId>xerces</groupId>
-                    <artifactId>xercesImpl</artifactId>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

@@ -15,7 +15,7 @@ be safely re-run.
 See archive_quarter.py for how the archive quarter is chosen.
 
 Required environment variables:
-  MONGO_DB_WRITE    — MongoDB connection string (stored in GitHub Secrets)
+  MONGODB_URI       — MongoDB connection string (stored in GitHub Secrets)
   BACKUP_DOC_COUNT  — doc_count metadata from the backup blob (set by workflow)
 """
 
@@ -47,9 +47,9 @@ def with_retry(fn):
 
 
 def main():
-    mongo_uri = os.environ.get("MONGO_DB_WRITE")
+    mongo_uri = os.environ.get("MONGODB_URI")
     if not mongo_uri:
-        print("ERROR: MONGO_DB_WRITE environment variable not set.", file=sys.stderr)
+        print("ERROR: MONGODB_URI environment variable not set.", file=sys.stderr)
         sys.exit(1)
 
     start_str, end_str, label = get_archive_quarter_range()

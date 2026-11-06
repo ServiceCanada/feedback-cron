@@ -10,7 +10,7 @@ name: Archive Quarter Delete
 # the quarter than were backed up. This also protects manual dispatches, which
 # don't depend on an export run.
 #
-# Required secrets: MONGO_DB_WRITE, AZURE_CLIENT_ID, AZURE_TENANT_ID,
+# Required secrets: MONGODB_URI, AZURE_CLIENT_ID, AZURE_TENANT_ID,
 # AZURE_SUBSCRIPTION_ID, AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_CONTAINER
 # (same as archive-export.yml).
 
@@ -93,7 +93,7 @@ jobs:
 
       - name: Delete archive quarter from MongoDB
         env:
-          MONGO_DB_WRITE: ${{ secrets.MONGO_DB_WRITE }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
           BACKUP_DOC_COUNT: ${{ steps.backup.outputs.doc_count }}
         run: python scripts/delete_archive_quarter.py
 

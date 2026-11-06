@@ -8,7 +8,7 @@ name: Archive Quarter Export
 # can contain personally identifiable / sensitive information.
 #
 # Required secrets:
-#   MONGO_DB_WRITE                — MongoDB connection string
+#   MONGODB_URI                   — MongoDB connection string
 #   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
 #                                 — IDs for the OIDC login (shared with main.yml)
 #   AZURE_STORAGE_ACCOUNT         — Storage account name (e.g. tbsfeedbackarchives)
@@ -56,7 +56,7 @@ jobs:
       - name: Export archive quarter to CSV
         id: export
         env:
-          MONGO_DB_WRITE: ${{ secrets.MONGO_DB_WRITE }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: python scripts/export_archive_quarter.py
 
       - name: Log in to Azure

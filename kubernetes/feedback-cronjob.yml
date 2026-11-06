@@ -22,6 +22,12 @@ spec:
             - name: feedback-cj
               image: tbsacr.azurecr.io/feedback-cj:1.0.0
               imagePullPolicy: Always
+              env:
+                - name: SPRING_PROFILES_ACTIVE
+                  value: prod
+              envFrom:
+                - secretRef:
+                    name: feedback-cj-secrets
               resources:
                 limits:
                   cpu: "1"
