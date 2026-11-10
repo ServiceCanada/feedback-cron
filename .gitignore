@@ -38,6 +38,7 @@ tasks/
 
 # Editor and IDE files (regenerated from pom.xml)
 .idea/
+bin/
 *.iml
 .settings/
 .classpath
