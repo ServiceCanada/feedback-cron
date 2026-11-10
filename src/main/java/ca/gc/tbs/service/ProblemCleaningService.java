@@ -53,8 +53,7 @@ public class ProblemCleaningService {
             try {
                 processProblem(problem, seenComments);
             } catch (Exception e) {
-                logger.error("Could not process problem: {} - Details: {}", 
-                        problem.getId(), problem.getProblemDetails(), e);
+                logger.error("Could not process problem: {}", problem.getId(), e);
             }
         }
         logger.info("Problem cleaning complete");
@@ -77,7 +76,8 @@ public class ProblemCleaningService {
         // Check for duplicates within this batch
         String normalizedComment = problem.getProblemDetails().trim().toLowerCase();
         if (ValidationUtils.isDuplicateComment(normalizedComment, seenComments)) {
-            logger.info("Deleting duplicate comment: {}", problem.getProblemDetails());
+            logger.info("Deleting duplicate comment: {}", problem.getId());
+            problem.setProblemDetails(contentService.cleanContent(problem.getProblemDetails()));
             spreadsheetService.logDuplicateComment(problem);
             problemRepository.delete(problem);
             return;
