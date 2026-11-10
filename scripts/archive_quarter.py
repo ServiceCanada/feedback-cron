@@ -22,21 +22,21 @@ def get_archive_quarter_range():
     month = today.month
     year = today.year
 
-    if month in (1, 2, 3):       # CQ1 running → archive CQ3 of prev year
+    if month in (1, 2, 3):  # CQ1 running → archive CQ3 of prev year
         start = date(year - 1, 7, 1)
-        end   = date(year - 1, 9, 30)
+        end = date(year - 1, 9, 30)
         label = f"{year - 1}-CQ3"
-    elif month in (4, 5, 6):     # CQ2 running → archive CQ4 of prev year
+    elif month in (4, 5, 6):  # CQ2 running → archive CQ4 of prev year
         start = date(year - 1, 10, 1)
-        end   = date(year - 1, 12, 31)
+        end = date(year - 1, 12, 31)
         label = f"{year - 1}-CQ4"
-    elif month in (7, 8, 9):     # CQ3 running → archive CQ1 of current year
+    elif month in (7, 8, 9):  # CQ3 running → archive CQ1 of current year
         start = date(year, 1, 1)
-        end   = date(year, 3, 31)
+        end = date(year, 3, 31)
         label = f"{year}-CQ1"
-    else:                         # CQ4 running → archive CQ2 of current year
+    else:  # CQ4 running → archive CQ2 of current year
         start = date(year, 4, 1)
-        end   = date(year, 6, 30)
+        end = date(year, 6, 30)
         label = f"{year}-CQ2"
 
     return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"), label

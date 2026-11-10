@@ -51,23 +51,25 @@ def main():
     # Fixed field order matching the viewer CSV export format
     # Maps CSV header → MongoDB field name
     FIELD_MAP = [
-        ("Problem Date",     "problemDate"),
+        ("Problem Date", "problemDate"),
         ("Time Stamp (UTC)", "timeStamp"),
-        ("Problem Details",  "problemDetails"),
-        ("Language",         "language"),
-        ("Title",            "title"),
-        ("URL",              "url"),
-        ("Institution",      "institution"),
-        ("Section",          "section"),
-        ("Theme",            "theme"),
-        ("Device Type",      "deviceType"),
-        ("Browser",          "browser"),
+        ("Problem Details", "problemDetails"),
+        ("Language", "language"),
+        ("Title", "title"),
+        ("URL", "url"),
+        ("Institution", "institution"),
+        ("Section", "section"),
+        ("Theme", "theme"),
+        ("Device Type", "deviceType"),
+        ("Browser", "browser"),
     ]
-    headers    = [h for h, _ in FIELD_MAP]
+    headers = [h for h, _ in FIELD_MAP]
     mongo_keys = [k for _, k in FIELD_MAP]
 
     os.makedirs("/tmp/feedback-archives", exist_ok=True)
-    filename = os.path.join("/tmp/feedback-archives", archive_blob_name(start_str, end_str, label))
+    filename = os.path.join(
+        "/tmp/feedback-archives", archive_blob_name(start_str, end_str, label)
+    )
 
     with open(filename, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
