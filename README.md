@@ -70,6 +70,7 @@ copy of the rows.
 | `docker-compose stop`                | Stop MongoDB (also for the viewer); data is kept |
 | `docker-compose down -v`             | Wipe the shared local database                   |
 | `make test`                          | Run the unit tests                               |
+| `make fmt`                           | Format all files (CI fails PRs that need it)     |
 
 ### Troubleshooting
 
