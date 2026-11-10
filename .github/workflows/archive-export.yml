@@ -20,13 +20,13 @@ name: Archive Quarter Export
 on:
   schedule:
     # Cron is UTC. 07:00 UTC = 02:00 EST (UTC-5).
-    - cron: '0 7 1 1,4,7,10 *'
+    - cron: "0 7 1 1,4,7,10 *"
   workflow_dispatch: # Allow manual trigger for testing
 
 permissions:
-  contents: read  # Read-only — nothing is committed to the repo
+  contents: read # Read-only — nothing is committed to the repo
   id-token: write # Lets azure/login request an OIDC token instead of a stored secret
-  issues: write   # Lets a failed run open an issue so it gets noticed
+  issues: write # Lets a failed run open an issue so it gets noticed
 
 jobs:
   export:
@@ -35,9 +35,9 @@ jobs:
     outputs:
       archive_label: ${{ steps.export.outputs.archive_label }}
       archive_start: ${{ steps.export.outputs.archive_start }}
-      archive_end:   ${{ steps.export.outputs.archive_end }}
-      doc_count:     ${{ steps.export.outputs.doc_count }}
-      csv_file:      ${{ steps.export.outputs.csv_file }}
+      archive_end: ${{ steps.export.outputs.archive_end }}
+      doc_count: ${{ steps.export.outputs.doc_count }}
+      csv_file: ${{ steps.export.outputs.csv_file }}
 
     steps:
       - name: Checkout repository
@@ -46,7 +46,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       # PyMongo 4.18 requires MongoDB wire version 9; the Cosmos DB server
       # reports 8, so 4.17 is the newest release that can connect.

@@ -1,0 +1,65 @@
+# Local development stack: `docker-compose up` runs the job once against the local MongoDB,
+# then exits. Re-run it with `docker-compose run --rm job`. Uses the local profile, so no
+# secrets are needed and Airtable and Google Sheets are never called. Needs feedback-viewer
+# checked out next to this repo (or VIEWER_DIR set).
+#
+# The feedback-viewer's docker-compose.yml uses the same project name, so locally the two
+# repos share one MongoDB, like prod: whichever starts first creates it, and rows the job
+# processes show up in the local viewer on refresh.
+name: pagesuccess
+
+services:
+  # Keep this service identical to the one in the feedback-viewer's docker-compose.yml, or
+  # starting either stack restarts the shared database.
+  mongodb:
+    image: mongo:7.0
+    # Keeps its logs out of `up`, and lets `up` here return once the job is done.
+    attach: false
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  job:
+    image: maven:3.9.15-eclipse-temurin-21
+    working_dir: /app
+    command: sh docker/dev.sh
+    ports:
+      - "8001:8000" # remote debugger (the feedback-viewer uses 8000)
+    volumes:
+      - .:/app
+      - maven_repo:/root/.m2
+      - /app/target # keep container build output out of the host's target/
+      - ${VIEWER_DIR:-../feedback-viewer}:/viewer
+      - viewer_target:/viewer/target # keep the viewer build out of the host's checkout
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017
+      SPRING_DATA_MONGODB_DATABASE: pagesuccess
+      APP_INTEGRATIONS_ENABLED: "false"
+      LOGGING_LEVEL_ROOT: info
+      # Set to y (e.g. `DEBUG_SUSPEND=y docker-compose run --rm --service-ports job`) to
+      # make the job wait for a debugger on port 8001; it finishes too fast to attach otherwise.
+      DEBUG_SUSPEND: ${DEBUG_SUSPEND:-n}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  # Formatters for everything but Java, for `make fmt` / `make fmt-check`.
+  # The profile keeps `docker-compose up` from starting it.
+  fmt:
+    build: docker/fmt
+    profiles: [tools]
+    working_dir: /app
+    volumes:
+      - .:/app
+
+volumes:
+  mongodb_data:
+  maven_repo:
+  viewer_target:

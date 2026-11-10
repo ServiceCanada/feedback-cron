@@ -1,0 +1,7 @@
+# Prettier already skips .gitignore'd files; these are editor and tool files that people
+# usually ignore globally instead.
+.idea/
+.vscode/
+.settings/
+.claude/
+tasks/

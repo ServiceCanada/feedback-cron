@@ -15,7 +15,7 @@ env:
   VIEWER_REF: main
 
 jobs:
-  validate:
+  pr-validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -25,6 +25,7 @@ jobs:
         with:
           java-version: "21"
           distribution: "temurin"
+          cache: maven
 
       - name: Check out feedback-viewer
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -37,10 +38,10 @@ jobs:
       - name: Install feedback-viewer classes and local jars
         run: |
           mvn -B -q -DskipTests -f feedback-viewer/pom.xml install
-          mvn install:install-file -Dfile="lib/airtable.java-0.2.0.jar" -DgroupId="com.sybit" -DartifactId="airtable.java" -Dversion="0.2.0" -Dpackaging=jar -DgeneratePom=true
+          mvn -B install:install-file -Dfile="lib/airtable.java-0.2.0.jar" -DgroupId="com.sybit" -DartifactId="airtable.java" -Dversion="0.2.0" -Dpackaging=jar -DgeneratePom=true
 
-      - name: Build with Maven
-        run: mvn install --file pom.xml
+      - name: Build and test
+        run: mvn -B verify
 
       # Build only. Nothing is pushed to the registry and no image tagged
       # here can reach the cluster.
@@ -52,6 +53,7 @@ jobs:
       # cluster to fetch schemas from, and this workflow has no cluster access.
       - name: Validate Kubernetes manifest
         run: |
-          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
-            | tar xz kubeconform
+          curl -sSLo kubeconform.tar.gz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          echo "95f14e87aa28c09d5941f11bd024c1d02fdc0303ccaa23f61cef67bc92619d73  kubeconform.tar.gz" | sha256sum -c -
+          tar xzf kubeconform.tar.gz kubeconform
           ./kubeconform -strict -summary kubernetes/feedback-cronjob.yml
