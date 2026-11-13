@@ -21,7 +21,7 @@ public class ProblemCleaningService {
 
   private static final int MAX_COMMENT_LENGTH = 301;
 
-  // English and French first path segment. Values are option values the viewer already filters on.
+  // Department acronym by path slug
   private static final Map<String, String> DEPARTMENT_BY_SLUG =
       Map.ofEntries(
           Map.entry("agriculture-agri-food", "AAFC"),
@@ -89,6 +89,18 @@ public class ProblemCleaningService {
           Map.entry("treasury-board-secretariat", "TBS"),
           Map.entry("secretariat-conseil-tresor", "TBS"));
 
+  // Department acronym by hostname
+  private static final Map<String, String> DEPARTMENT_BY_HOST =
+      Map.ofEntries(
+          Map.entry("agriculture.canada.ca", "AAFC"),
+          Map.entry("inspection.canada.ca", "CFIA"),
+          Map.entry("international.canada.ca", "GAC"),
+          Map.entry("ircc.canada.ca", "IRCC"),
+          Map.entry("ised-isde.canada.ca", "ISED"),
+          Map.entry("nrc.canada.ca", "NRC"),
+          Map.entry("natural-resources.canada.ca", "NRCAN"),
+          Map.entry("nserc-crsng.canada.ca", "NSERC"));
+
   private final ContentService contentService;
   private final ProblemRepository problemRepository;
   private final SpreadsheetService spreadsheetService;
@@ -151,7 +163,7 @@ public class ProblemCleaningService {
     }
     seenComments.add(normalizedComment);
 
-    // Before save, so Mongo and the later Airtable copy both get the department.
+    // Fill a blank department from the URL
     fillBlankInstitution(problem);
 
     // Clean personal info from valid, non-duplicate records
@@ -172,7 +184,6 @@ public class ProblemCleaningService {
         problem.setInstitution(acronym);
       }
     } catch (RuntimeException e) {
-      // Leave the department blank so cleaning this comment still finishes.
       logger.debug("Could not read a department for problem {}", problem.getId(), e);
     }
   }
@@ -192,9 +203,18 @@ public class ProblemCleaningService {
       return null;
     }
     host = host.toLowerCase(Locale.ROOT);
-    // Institution pages also live on subdomains such as international.canada.ca.
+    // canada.ca hosts only
     if (!"canada.ca".equals(host) && !host.endsWith(".canada.ca")) {
       return null;
+    }
+    // Drop a leading www before matching
+    if (host.startsWith("www.")) {
+      host = host.substring("www.".length());
+    }
+    // Match a known hostname before the path
+    String department = DEPARTMENT_BY_HOST.get(host);
+    if (department != null) {
+      return department;
     }
     String path = uri.getPath();
     if (path == null) {
@@ -217,7 +237,7 @@ public class ProblemCleaningService {
     if (slug == null || (!"en".equals(language) && !"fr".equals(language))) {
       return null;
     }
-    // Home pages are "{slug}.html", so drop the suffix before matching.
+    // Drop a trailing .html before matching
     if (slug.endsWith(".html")) {
       slug = slug.substring(0, slug.length() - ".html".length());
     }

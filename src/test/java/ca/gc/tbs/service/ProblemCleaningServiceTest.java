@@ -152,6 +152,84 @@ class ProblemCleaningServiceTest {
   }
 
   @Test
+  void blankInstitutionOnDepartmentHostBecomesThatDepartment() {
+    when(contentService.cleanContent(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    String[][] pages = {
+      {"https://ircc.canada.ca/english/helpcentre/index-featured-can.asp", "IRCC"},
+      {
+        "https://www.ircc.canada.ca/francais/centre-aide/index-en-vedette-can.asp?qnum=1#top",
+        "IRCC"
+      },
+      {"https://IRCC.CANADA.CA/english/information/fees/fees.asp", "IRCC"},
+      {"https://agriculture.canada.ca/en", "AAFC"},
+      {"https://inspection.canada.ca/en/inspection-and-enforcement", "CFIA"},
+      {"https://international.canada.ca/", "GAC"},
+      {"https://ised-isde.canada.ca/site/ised/en", "ISED"},
+      {"https://www.nrc.canada.ca/en", "NRC"},
+      {"https://natural-resources.canada.ca/", "NRCAN"},
+      {"https://nserc-crsng.canada.ca/en", "NSERC"},
+    };
+    List<Problem> problems = new ArrayList<>();
+    int id = 1;
+    for (String[] page : pages) {
+      Problem problem = problem(Integer.toString(id++));
+      problem.setProblemDetails("Comment on " + page[0]);
+      problem.setUrl(page[0]);
+      problems.add(problem);
+    }
+    givenUncleaned(problems.toArray(Problem[]::new));
+
+    service.cleanProblems();
+
+    for (int i = 0; i < pages.length; i++) {
+      assertThat(problems.get(i).getInstitution()).as(pages[i][0]).isEqualTo(pages[i][1]);
+      assertThat(problems.get(i).getUrl()).isEqualTo(pages[i][0]);
+    }
+    assertThat(problems).extracting(Problem::getPersonalInfoProcessed).containsOnly("true");
+  }
+
+  @Test
+  void otherCanadaCaHostsStayBlank() {
+    when(contentService.cleanContent(anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    String[] urls = {
+      "https://tc.canada.ca/en/marine-transportation",
+      "https://parks.canada.ca/",
+      "https://justice.canada.ca/",
+      "https://health.canada.ca/",
+      "https://fin.canada.ca/",
+      "https://budget.canada.ca/",
+      "https://open.canada.ca/en",
+      "https://canadabuys.canada.ca/en",
+    };
+    List<Problem> problems = new ArrayList<>();
+    int id = 1;
+    for (String url : urls) {
+      Problem problem = problem(Integer.toString(id++));
+      problem.setProblemDetails("Comment on " + url);
+      problem.setUrl(url);
+      problems.add(problem);
+    }
+    givenUncleaned(problems.toArray(Problem[]::new));
+
+    service.cleanProblems();
+
+    assertThat(problems).extracting(Problem::getInstitution).containsOnlyNulls();
+    assertThat(problems).extracting(Problem::getUrl).containsExactly(urls);
+    assertThat(problems).extracting(Problem::getPersonalInfoProcessed).containsOnly("true");
+  }
+
+  @Test
+  void existingInstitutionOnDepartmentHostIsLeftUnchanged() {
+    Problem problem = problem("1");
+    problem.setInstitution("CRA");
+    problem.setUrl("https://ircc.canada.ca/english/helpcentre/index-featured-can.asp");
+
+    assertThat(cleanOne(problem).getInstitution()).isEqualTo("CRA");
+  }
+
+  @Test
   void serviceCanadaPageUsesTheEsdcSlug() {
     Problem problem = problem("1");
     problem.setUrl(
