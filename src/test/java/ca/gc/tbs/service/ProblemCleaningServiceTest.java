@@ -109,7 +109,12 @@ class ProblemCleaningServiceTest {
     Problem problem = problem("1");
     problem.setUrl("https://www.canada.ca/en/Revenue-Agency.HTML");
 
-    assertThat(cleanOne(problem).getInstitution()).isEqualTo("CRA");
+    Problem saved = cleanOne(problem);
+
+    assertThat(saved.getInstitution()).isEqualTo("CRA");
+    assertThat(logs.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .contains("Filled department CRA from URL for problem 1");
   }
 
   @Test
@@ -128,7 +133,9 @@ class ProblemCleaningServiceTest {
     int id = 1;
     for (String[] department : DEPARTMENTS) {
       addDepartmentPage(problems, id++, "en", department[1]);
-      addDepartmentPage(problems, id++, "fr", department[2]);
+      if (department.length > 2) {
+        addDepartmentPage(problems, id++, "fr", department[2]);
+      }
     }
     Problem globalAffairs = problem(Integer.toString(id));
     globalAffairs.setProblemDetails("Comment on the Global Affairs subdomain");
@@ -139,13 +146,14 @@ class ProblemCleaningServiceTest {
 
     service.cleanProblems();
 
-    for (int i = 0; i < DEPARTMENTS.length; i++) {
-      assertThat(problems.get(i * 2).getInstitution())
-          .as(DEPARTMENTS[i][1])
-          .isEqualTo(DEPARTMENTS[i][0]);
-      assertThat(problems.get(i * 2 + 1).getInstitution())
-          .as(DEPARTMENTS[i][2])
-          .isEqualTo(DEPARTMENTS[i][0]);
+    int index = 0;
+    for (String[] department : DEPARTMENTS) {
+      assertThat(problems.get(index++).getInstitution()).as(department[1]).isEqualTo(department[0]);
+      if (department.length > 2) {
+        assertThat(problems.get(index++).getInstitution())
+            .as(department[2])
+            .isEqualTo(department[0]);
+      }
     }
     assertThat(globalAffairs.getInstitution()).isEqualTo("GAC");
     assertThat(problems).extracting(Problem::getPersonalInfoProcessed).containsOnly("true");
@@ -218,6 +226,19 @@ class ProblemCleaningServiceTest {
     assertThat(problems).extracting(Problem::getInstitution).containsOnlyNulls();
     assertThat(problems).extracting(Problem::getUrl).containsExactly(urls);
     assertThat(problems).extracting(Problem::getPersonalInfoProcessed).containsOnly("true");
+  }
+
+  @Test
+  void slugOnAnotherCanadaCaHostStaysBlank() {
+    Problem problem = problem("1");
+    problem.setUrl("https://tc.canada.ca/en/revenue-agency/services/example.html");
+
+    Problem saved = cleanOne(problem);
+
+    assertThat(saved.getInstitution()).isNull();
+    assertThat(logs.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .noneMatch(message -> message.startsWith("Filled department"));
   }
 
   @Test
@@ -356,7 +377,9 @@ class ProblemCleaningServiceTest {
   }
 
   private static final String[][] DEPARTMENTS = {
+    {"ACOA", "atlantic-canada-opportunities"},
     {"AAFC", "agriculture-agri-food", "agriculture-agroalimentaire"},
+    {"CANNOR", "northern-economic-development", "developpement-economique-nord"},
     {"CBSA", "border-services-agency", "agence-services-frontaliers"},
     {"CCG", "canadian-coast-guard", "garde-cotiere-canadienne"},
     {"CER", "canada-energy-regulator", "regie-energie-canada"},
@@ -369,6 +392,7 @@ class ProblemCleaningServiceTest {
     {"CRA", "revenue-agency", "agence-revenu"},
     {"CSC", "correctional-service", "service-correctionnel"},
     {"CSE", "communications-security", "securite-telecommunications"},
+    {"CSPS", "school-public-service", "ecole-fonction-publique"},
     {"DFO", "fisheries-oceans", "peches-oceans"},
     {"DND", "department-national-defence", "ministere-defense-nationale"},
     {"ECCC", "environment-climate-change", "environnement-changement-climatique"},
@@ -385,17 +409,24 @@ class ProblemCleaningServiceTest {
       "innovation-science-economic-development",
       "innovation-sciences-developpement-economique"
     },
+    {"JUS", "department-justice", "ministere-justice"},
     {"LAC", "library-archives", "bibliotheque-archives"},
     {"NRC", "national-research-council", "conseil-national-recherches"},
     {"NRCAN", "natural-resources-canada", "ressources-naturelles-canada"},
     {"NSERC", "science-engineering-research", "recherches-sciences-genie"},
     {"OMBDNDCAF", "ombudsman-national-defence-forces", "ombudsman-defense-nationale-forces"},
+    {"PCH", "canadian-heritage", "patrimoine-canadien"},
+    {"PCO", "privy-council", "conseil-prive"},
     {"PS", "public-safety-canada", "securite-publique-canada"},
+    {"PSC", "public-service-commission", "commission-fonction-publique"},
     {"PSPC", "public-services-procurement", "services-publics-approvisionnement"},
     {"PSPC-OL", "translation-bureau", "bureau-traduction"},
     {"PHAC", "public-health", "sante-publique"},
+    {"SSC", "shared-services", "services-partages"},
     {"SSHRC", "social-sciences-humanities-research", "recherches-sciences-humaines"},
+    {"TC", "transport-canada", "transports-canada"},
     {"TBS", "treasury-board-secretariat", "secretariat-conseil-tresor"},
+    {"WAGE", "women-gender-equality", "femmes-egalite-genres"},
   };
 
   private static void addDepartmentPage(

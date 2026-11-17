@@ -24,8 +24,11 @@ public class ProblemCleaningService {
   // Department acronym by path slug
   private static final Map<String, String> DEPARTMENT_BY_SLUG =
       Map.ofEntries(
+          Map.entry("atlantic-canada-opportunities", "ACOA"),
           Map.entry("agriculture-agri-food", "AAFC"),
           Map.entry("agriculture-agroalimentaire", "AAFC"),
+          Map.entry("northern-economic-development", "CANNOR"),
+          Map.entry("developpement-economique-nord", "CANNOR"),
           Map.entry("border-services-agency", "CBSA"),
           Map.entry("agence-services-frontaliers", "CBSA"),
           Map.entry("canadian-coast-guard", "CCG"),
@@ -42,6 +45,8 @@ public class ProblemCleaningService {
           Map.entry("service-correctionnel", "CSC"),
           Map.entry("communications-security", "CSE"),
           Map.entry("securite-telecommunications", "CSE"),
+          Map.entry("school-public-service", "CSPS"),
+          Map.entry("ecole-fonction-publique", "CSPS"),
           Map.entry("fisheries-oceans", "DFO"),
           Map.entry("peches-oceans", "DFO"),
           Map.entry("department-national-defence", "DND"),
@@ -66,6 +71,8 @@ public class ProblemCleaningService {
           Map.entry("services-autochtones-canada", "ISC"),
           Map.entry("innovation-science-economic-development", "ISED"),
           Map.entry("innovation-sciences-developpement-economique", "ISED"),
+          Map.entry("department-justice", "JUS"),
+          Map.entry("ministere-justice", "JUS"),
           Map.entry("library-archives", "LAC"),
           Map.entry("bibliotheque-archives", "LAC"),
           Map.entry("national-research-council", "NRC"),
@@ -76,18 +83,30 @@ public class ProblemCleaningService {
           Map.entry("recherches-sciences-genie", "NSERC"),
           Map.entry("ombudsman-national-defence-forces", "OMBDNDCAF"),
           Map.entry("ombudsman-defense-nationale-forces", "OMBDNDCAF"),
+          Map.entry("canadian-heritage", "PCH"),
+          Map.entry("patrimoine-canadien", "PCH"),
+          Map.entry("privy-council", "PCO"),
+          Map.entry("conseil-prive", "PCO"),
           Map.entry("public-safety-canada", "PS"),
           Map.entry("securite-publique-canada", "PS"),
+          Map.entry("public-service-commission", "PSC"),
+          Map.entry("commission-fonction-publique", "PSC"),
           Map.entry("public-services-procurement", "PSPC"),
           Map.entry("services-publics-approvisionnement", "PSPC"),
           Map.entry("translation-bureau", "PSPC-OL"),
           Map.entry("bureau-traduction", "PSPC-OL"),
           Map.entry("public-health", "PHAC"),
           Map.entry("sante-publique", "PHAC"),
+          Map.entry("shared-services", "SSC"),
+          Map.entry("services-partages", "SSC"),
           Map.entry("social-sciences-humanities-research", "SSHRC"),
           Map.entry("recherches-sciences-humaines", "SSHRC"),
+          Map.entry("transport-canada", "TC"),
+          Map.entry("transports-canada", "TC"),
           Map.entry("treasury-board-secretariat", "TBS"),
-          Map.entry("secretariat-conseil-tresor", "TBS"));
+          Map.entry("secretariat-conseil-tresor", "TBS"),
+          Map.entry("women-gender-equality", "WAGE"),
+          Map.entry("femmes-egalite-genres", "WAGE"));
 
   // Department acronym by hostname
   private static final Map<String, String> DEPARTMENT_BY_HOST =
@@ -182,6 +201,7 @@ public class ProblemCleaningService {
       String acronym = departmentFromUrl(problem.getUrl());
       if (acronym != null) {
         problem.setInstitution(acronym);
+        logger.info("Filled department {} from URL for problem {}", acronym, problem.getId());
       }
     } catch (RuntimeException e) {
       logger.debug("Could not read a department for problem {}", problem.getId(), e);
@@ -215,6 +235,10 @@ public class ProblemCleaningService {
     String department = DEPARTMENT_BY_HOST.get(host);
     if (department != null) {
       return department;
+    }
+    // Path slugs identify a department only on www.canada.ca
+    if (!"canada.ca".equals(host)) {
+      return null;
     }
     String path = uri.getPath();
     if (path == null) {
