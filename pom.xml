@@ -21,6 +21,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <jackson-bom.version>2.21.8</jackson-bom.version>
+        <logback.version>1.5.34</logback.version>
     </properties>
     <repositories>
         <!-- <repository>
@@ -29,6 +30,16 @@
             <url>https://dl.bintray.com/sybit-education/maven/</url>
         </repository> -->
     </repositories>
+    <dependencyManagement>
+        <dependencies>
+            <!-- Pulled in by the Google API client; pinned past known vulnerabilities -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>33.7.2-android</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>com.google.code.gson</groupId>
