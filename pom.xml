@@ -22,6 +22,8 @@
         <maven.compiler.target>21</maven.compiler.target>
         <jackson-bom.version>2.21.8</jackson-bom.version>
         <logback.version>1.5.34</logback.version>
+        <httpcore5.version>5.4.3</httpcore5.version>
+        <log4j2.version>2.25.5</log4j2.version>
     </properties>
     <repositories>
         <!-- <repository>
@@ -37,6 +39,12 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>33.7.2-android</version>
+            </dependency>
+            <!-- Pulled in by unirest-java (Airtable library); pinned past known vulnerabilities -->
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>4.5.14</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -154,11 +162,6 @@
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.23.2</version>
-        </dependency>
-        <dependency>
-            <groupId>uk.gov.service.notify</groupId>
-            <artifactId>notifications-java-client</artifactId>
-            <version>3.15.1-RELEASE</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
